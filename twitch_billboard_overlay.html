@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Twitch Billboard</title>
+    
+    <!-- Load Twitch Chat Library (tmi.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tmi.js/1.8.5/tmi.min.js"></script>
+    
+    <!-- Load Text Fitting Library (fitty) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fitty/2.3.6/fitty.min.js"></script>
+
+    <style>
+        /* Phase 2: Core Frontend Styles */
+        body {
+            /* Transparent background is crucial for OBS overlays */
+            background-color: transparent; 
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #billboard-container {
+            /* Default Starting Dimensions */
+            width: 800px;
+            height: 200px;
+            
+            /* Visual Styling */
+            background-color: rgba(15, 15, 20, 0.85); /* Semi-transparent dark background */
+            border: 4px solid #9146FF; /* Twitch Purple border */
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            
+            /* Flexbox to perfectly center the text */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+            
+            /* Smooth animation when resizing */
+            transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                        height 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #billboard-text {
+            color: #ffffff;
+            font-weight: 800;
+            text-align: center;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            width: 100%;
+            white-space: pre-wrap; /* Allows multiline wrapping if needed */
+        }
+
+        /* Helper message style for setup */
+        #setup-warning {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Warning to show if the user forgot the ?channel URL parameter -->
+    <div id="setup-warning">
+        ⚠️ Missing Channel! Add "?channel=yourname" to the Browser Source URL in OBS.
+    </div>
+
+    <!-- The main billboard container -->
+    <div id="billboard-container">
+        <div id="billboard-text">Waiting for command...</div>
+    </div>
+
+    <script>
+        // --- PHASE 1 & 2: Initialization and Text Auto-Fitting ---
+        
+        // Initialize Fitty to make text snap to container bounds
+        const fittyInstance = fitty('#billboard-text', {
+            minSize: 16,
+            maxSize: 400,
+            multiLine: true
+        });
+
+        // Helper function to re-calculate text size after dimensions change
+        function updateFitty() {
+            // Fitty needs to re-evaluate after the CSS transition finishes
+            setTimeout(() => {
+                fittyInstance[0].fit();
+            }, 410); // slightly longer than the 0.4s CSS transition
+        }
+
+        // --- PHASE 3: Twitch Chat Integration ---
+
+        // Grab the channel name from the OBS Browser Source URL parameters
+        // Example: https://your-site.github.io/index.html?channel=shroud
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelName = urlParams.get('channel');
+
+        if (!channelName) {
+            document.getElementById('setup-warning').style.display = 'block';
+            document.getElementById('billboard-text').innerText = 'SETUP REQUIRED';
+            fittyInstance[0].fit();
+        } else {
+            // Configure tmi.js client
+            const client = new tmi.Client({
+                connection: {
+                    secure: true,
+                    reconnect: true
+                },
+                channels: [channelName]
+            });
+
+            client.connect().then(() => {
+                console.log(`Connected to Twitch chat: #${channelName}`);
+                document.getElementById('billboard-text').innerText = 'BILLBOARD ACTIVE';
+                fittyInstance[0].fit();
+            }).catch(console.error);
+
+            // Listen for incoming messages
+            client.on('message', (channel, tags, message, self) => {
+                // Ignore messages from the bot itself (if authenticated)
+                if (self) return;
+
+                // --- PHASE 4: Security and Guardrails ---
+                
+                // 1. Permission Checks: Only Broadcaster and Mods can use commands
+                const isBroadcaster = tags.badges && tags.badges.broadcaster === '1';
+                const isMod = tags.mod === true;
+                
+                if (!isBroadcaster && !isMod) {
+                    return; // Ignore regular viewers
+                }
+
+                // 2. Command Parsing: !billboardtext
+                if (message.toLowerCase().startsWith('!billboardtext ')) {
+                    const newText = message.slice(15).trim(); // Extract text after command
+                    if (newText.length > 0) {
+                        document.getElementById('billboard-text').innerText = newText;
+                        fittyInstance[0].fit(); // Instantly resize text
+                    }
+                }
+
+                // 3. Command Parsing: !billboardsize
+                if (message.toLowerCase().startsWith('!billboardsize ')) {
+                    const sizeStr = message.slice(15).trim();
+                    const dimensions = sizeStr.split('x'); // e.g. ["1920", "1080"]
+                    
+                    if (dimensions.length === 2) {
+                        const width = parseInt(dimensions[0], 10);
+                        const height = parseInt(dimensions[1], 10);
+
+                        // Size Limits to prevent crashing OBS
+                        if (!isNaN(width) && !isNaN(height)) {
+                            const clampedWidth = Math.max(100, Math.min(width, 1920));
+                            const clampedHeight = Math.max(50, Math.min(height, 1080));
+
+                            const container = document.getElementById('billboard-container');
+                            container.style.width = clampedWidth + 'px';
+                            container.style.height = clampedHeight + 'px';
+                            
+                            // Re-fit text once the container has animated to the new size
+                            updateFitty();
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
