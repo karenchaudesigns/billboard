@@ -131,10 +131,43 @@
         // Example: https://your-site.github.io/index.html?channel=shroud
         const urlParams = new URLSearchParams(window.location.search);
         const channelName = urlParams.get('channel');
+        const initialWidth = urlParams.get('width');
+        const initialHeight = urlParams.get('height');
+        const initialText = urlParams.get('text');
+        let initialBg = urlParams.get('bg');
+        let initialFg = urlParams.get('fg');
+
+        const container = document.getElementById('billboard-container');
+        const textEl = document.getElementById('billboard-text');
+
+        if (initialWidth) {
+            const width = parseInt(initialWidth, 10);
+            if (!isNaN(width)) {
+                container.style.width = Math.max(100, Math.min(width, 1920)) + 'px';
+            }
+        }
+        if (initialHeight) {
+            const height = parseInt(initialHeight, 10);
+            if (!isNaN(height)) {
+                container.style.height = Math.max(50, Math.min(height, 1080)) + 'px';
+            }
+        }
+        if (initialBg) {
+            if (!initialBg.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(initialBg)) {
+                initialBg = '#' + initialBg;
+            }
+            container.style.backgroundColor = initialBg;
+        }
+        if (initialFg) {
+            if (!initialFg.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(initialFg)) {
+                initialFg = '#' + initialFg;
+            }
+            textEl.style.color = initialFg;
+        }
 
         if (!channelName) {
             document.getElementById('setup-warning').style.display = 'block';
-            document.getElementById('billboard-text').innerText = 'SETUP REQUIRED';
+            textEl.innerText = initialText ? initialText : 'SETUP REQUIRED';
             fitText();
         } else {
             // Configure tmi.js client
@@ -148,7 +181,7 @@
 
             client.connect().then(() => {
                 console.log(`Connected to Twitch chat: #${channelName}`);
-                document.getElementById('billboard-text').innerText = 'BILLBOARD ACTIVE';
+                textEl.innerText = initialText ? initialText : 'BILLBOARD ACTIVE';
                 fitText();
             }).catch(console.error);
 
@@ -202,7 +235,7 @@
 
                 // 4. Command Parsing: !billboard or !bbhelp
                 if (message.toLowerCase() === '!billboard' || message.toLowerCase() === '!bbhelp') {
-                    client.say(channel, 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bboutline <color|none>');
+                    client.say(channel, 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bbfg <color>, !bboutline <color|none>');
                 }
 
                 // 5. Command Parsing: !bbbg
@@ -214,6 +247,18 @@
                             color = '#' + color;
                         }
                         document.getElementById('billboard-container').style.backgroundColor = color;
+                    }
+                }
+
+                // 5.5 Command Parsing: !bbfg
+                if (message.toLowerCase().startsWith('!bbfg ')) {
+                    let color = message.slice(6).trim();
+                    if (color.length > 0) {
+                        // If color doesn't start with # and looks like a hex code (e.g. 000000)
+                        if (!color.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(color)) {
+                            color = '#' + color;
+                        }
+                        document.getElementById('billboard-text').style.color = color;
                     }
                 }
 
