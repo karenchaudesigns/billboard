@@ -8,9 +8,6 @@
     <!-- Load Twitch Chat Library (tmi.js) -->
     <script src="js/tmi.min.js"></script>
     
-    <!-- Load Text Fitting Library (fitty) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fitty/2.3.6/fitty.min.js"></script>
-
     <style>
         /* Phase 2: Core Frontend Styles */
         body {
@@ -32,7 +29,7 @@
             height: 200px;
             
             /* Visual Styling */
-            background-color: rgba(15, 15, 20, 0.85); /* Semi-transparent dark background */
+            background-color: #0f0f14; /* Opaque dark background */
             border: 4px solid #9146FF; /* Twitch Purple border */
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -57,6 +54,9 @@
             text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
             width: 100%;
             white-space: pre-wrap; /* Allows multiline wrapping if needed */
+            word-break: break-word;
+            line-height: 1.1;
+            margin: 0;
         }
 
         /* Helper message style for setup */
@@ -88,20 +88,42 @@
     <script>
         // --- PHASE 1 & 2: Initialization and Text Auto-Fitting ---
         
-        // Initialize Fitty to make text snap to container bounds
-        const fittyInstance = fitty('#billboard-text', {
-            minSize: 16,
-            maxSize: 400,
-            multiLine: true
-        });
+        function fitText() {
+            const container = document.getElementById('billboard-container');
+            const textEl = document.getElementById('billboard-text');
 
-        // Helper function to re-calculate text size after dimensions change
-        function updateFitty() {
-            // Fitty needs to re-evaluate after the CSS transition finishes
-            setTimeout(() => {
-                fittyInstance[0].fit();
-            }, 410); // slightly longer than the 0.4s CSS transition
+            const style = window.getComputedStyle(container);
+            const paddingLeft = parseFloat(style.paddingLeft);
+            const paddingRight = parseFloat(style.paddingRight);
+            const paddingTop = parseFloat(style.paddingTop);
+            const paddingBottom = parseFloat(style.paddingBottom);
+
+            const maxW = container.clientWidth - paddingLeft - paddingRight;
+            const maxH = container.clientHeight - paddingTop - paddingBottom;
+
+            let minSize = 1;
+            let maxSize = 1000;
+            let optimalSize = minSize;
+
+            while (minSize <= maxSize) {
+                const midSize = Math.floor((minSize + maxSize) / 2);
+                textEl.style.fontSize = midSize + 'px';
+
+                if (textEl.scrollWidth <= maxW && textEl.scrollHeight <= maxH) {
+                    optimalSize = midSize;
+                    minSize = midSize + 1;
+                } else {
+                    maxSize = midSize - 1;
+                }
+            }
+
+            textEl.style.fontSize = optimalSize + 'px';
         }
+
+        const resizeObserver = new ResizeObserver(() => {
+            fitText();
+        });
+        resizeObserver.observe(document.getElementById('billboard-container'));
 
         // --- PHASE 3: Twitch Chat Integration ---
 
@@ -113,7 +135,7 @@
         if (!channelName) {
             document.getElementById('setup-warning').style.display = 'block';
             document.getElementById('billboard-text').innerText = 'SETUP REQUIRED';
-            fittyInstance[0].fit();
+            fitText();
         } else {
             // Configure tmi.js client
             const client = new tmi.Client({
@@ -127,7 +149,7 @@
             client.connect().then(() => {
                 console.log(`Connected to Twitch chat: #${channelName}`);
                 document.getElementById('billboard-text').innerText = 'BILLBOARD ACTIVE';
-                fittyInstance[0].fit();
+                fitText();
             }).catch(console.error);
 
             // Listen for incoming messages
@@ -145,18 +167,18 @@
                     return; // Ignore regular viewers
                 }
 
-                // 2. Command Parsing: !billboardtext
-                if (message.toLowerCase().startsWith('!billboardtext ')) {
-                    const newText = message.slice(15).trim(); // Extract text after command
+                // 2. Command Parsing: !bbt (formerly !billboardtext)
+                if (message.toLowerCase().startsWith('!bbt ')) {
+                    const newText = message.slice(5).trim(); // Extract text after command
                     if (newText.length > 0) {
                         document.getElementById('billboard-text').innerText = newText;
-                        fittyInstance[0].fit(); // Instantly resize text
+                        fitText(); // Instantly resize text
                     }
                 }
 
-                // 3. Command Parsing: !billboardsize
-                if (message.toLowerCase().startsWith('!billboardsize ')) {
-                    const sizeStr = message.slice(15).trim();
+                // 3. Command Parsing: !bbs (formerly !billboardsize)
+                if (message.toLowerCase().startsWith('!bbs ')) {
+                    const sizeStr = message.slice(5).trim();
                     const dimensions = sizeStr.split('x'); // e.g. ["1920", "1080"]
                     
                     if (dimensions.length === 2) {
@@ -173,8 +195,42 @@
                             container.style.height = clampedHeight + 'px';
                             
                             // Re-fit text once the container has animated to the new size
-                            updateFitty();
+                            fitText();
                         }
+                    }
+                }
+
+                // 4. Command Parsing: !billboard
+                if (message.toLowerCase() === '!billboard') {
+                    document.getElementById('billboard-text').innerText = 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bboutline <color|none>';
+                    fitText();
+                }
+
+                // 5. Command Parsing: !bbbg
+                if (message.toLowerCase().startsWith('!bbbg ')) {
+                    let color = message.slice(6).trim();
+                    if (color.length > 0) {
+                        // If color doesn't start with # and looks like a hex code (e.g. 000000)
+                        if (!color.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(color)) {
+                            color = '#' + color;
+                        }
+                        document.getElementById('billboard-container').style.backgroundColor = color;
+                    }
+                }
+
+                // 6. Command Parsing: !bboutline
+                if (message.toLowerCase().startsWith('!bboutline ')) {
+                    let color = message.slice(11).trim();
+                    if (color.length > 0) {
+                        if (color.toLowerCase() === 'none') {
+                            document.getElementById('billboard-container').style.border = 'none';
+                        } else {
+                            if (!color.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(color)) {
+                                color = '#' + color;
+                            }
+                            document.getElementById('billboard-container').style.border = `4px solid ${color}`;
+                        }
+                        fitText(); // Border changes might affect inner dimensions slightly
                     }
                 }
             });
