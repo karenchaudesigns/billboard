@@ -7,6 +7,8 @@
     
     <!-- Load Twitch Chat Library (tmi.js) -->
     <script src="js/tmi.min.js"></script>
+    <script src="js/marked.min.js"></script>
+    <script src="js/purify.min.js"></script>
     
     <style>
         /* Phase 2: Core Frontend Styles */
@@ -50,7 +52,6 @@
             color: #ffffff;
             font-weight: 800;
             text-align: center;
-            text-transform: uppercase;
             text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
             width: 100%;
             white-space: pre-wrap; /* Allows multiline wrapping if needed */
@@ -202,9 +203,13 @@
 
                 // 2. Command Parsing: !bbt (formerly !billboardtext)
                 if (message.toLowerCase().startsWith('!bbt ')) {
-                    const newText = message.slice(5).trim(); // Extract text after command
+                    let newText = message.slice(5).trim(); // Extract text after command
                     if (newText.length > 0) {
-                        document.getElementById('billboard-text').innerText = newText;
+                        // Replace ';' with markdown line breaks '  \n' and parse markdown
+                        newText = newText.replace(/;/g, '  \n');
+                        const parsedText = marked.parse(newText);
+                        const cleanText = DOMPurify.sanitize(parsedText);
+                        document.getElementById('billboard-text').innerHTML = cleanText;
                         fitText(); // Instantly resize text
                     }
                 }
