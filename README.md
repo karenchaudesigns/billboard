@@ -15,6 +15,7 @@ A lightweight, customizable browser-source billboard for OBS that allows streame
    - Local File Example: `file:///path/to/Dynamic-Twitch-Billboard/index.html?channel=shroud`
    - Web Example: `https://your-site.github.io/index.html?channel=shroud`
 4. Set the Width and Height in OBS. Ensure "Shutdown source when not visible" is off if you want it to run continuously in the background.
+5. (Optional) Set the initial state by adding `&width=`, `&height=`, `&text=`, `&bg=`, or `&fg=` parameters to your URL.
 
 ## Commands
 *These commands can only be used by the Broadcaster and channel Moderators.*
@@ -23,4 +24,5 @@ A lightweight, customizable browser-source billboard for OBS that allows streame
 - `!bbt <text>` - Sets the main text for the billboard. (e.g., `!bbt Thanks for watching!`)
 - `!bbs <width>x<height>` - Resizes the billboard to the specified dimensions. (e.g., `!bbs 1200x300`)
 - `!bbbg <color>` - Sets the background color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbbg #ff0000` or `!bbbg 000000`)
+- `!bbfg <color>` - Sets the text color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbfg #00ff00` or `!bbfg 00ff00`)
 - `!bboutline <color>` - Sets the outline color of the billboard. Supports hex values. Use `none` to remove the outline. (e.g., `!bboutline #ffffff` or `!bboutline none`)
