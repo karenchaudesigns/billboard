@@ -19,7 +19,7 @@ A lightweight, customizable browser-source billboard for OBS that allows streame
 ## Commands
 *These commands can only be used by the Broadcaster and channel Moderators.*
 
-- `!billboard` - Lists all available commands on the billboard screen.
+- `!billboard` (or `!bbhelp`) - Outputs all available commands to the Twitch chat.
 - `!bbt <text>` - Sets the main text for the billboard. (e.g., `!bbt Thanks for watching!`)
 - `!bbs <width>x<height>` - Resizes the billboard to the specified dimensions. (e.g., `!bbs 1200x300`)
 - `!bbbg <color>` - Sets the background color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbbg #ff0000` or `!bbbg 000000`)
