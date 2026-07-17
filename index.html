@@ -200,10 +200,9 @@
                     }
                 }
 
-                // 4. Command Parsing: !billboard
-                if (message.toLowerCase() === '!billboard') {
-                    document.getElementById('billboard-text').innerText = 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bboutline <color|none>';
-                    fitText();
+                // 4. Command Parsing: !billboard or !bbhelp
+                if (message.toLowerCase() === '!billboard' || message.toLowerCase() === '!bbhelp') {
+                    client.say(channel, 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bboutline <color|none>');
                 }
 
                 // 5. Command Parsing: !bbbg
