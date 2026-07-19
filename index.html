@@ -26,6 +26,7 @@
         }
 
         #billboard-container {
+            position: relative;
             /* Default Starting Dimensions */
             width: 800px;
             height: 200px;
@@ -84,6 +85,7 @@
     <!-- The main billboard container -->
     <div id="billboard-container">
         <div id="billboard-text">Waiting for command...</div>
+        <div id="slide-numbers" style="position: absolute; right: -80px; top: 50%; transform: translateY(-50%); color: white; font-size: 32px; font-weight: bold; display: none;"></div>
     </div>
 
     <script>
@@ -132,6 +134,9 @@
         let slides = [];
         let currentSlideIndex = 0;
         let slideInterval = null;
+        let isPlaying = true;
+        let slideDuration = 60000;
+        let showNumbers = false;
 
         const defaultText = 'Welcome to the pond!';
         const defaultBg = '#8b4513';
@@ -146,6 +151,17 @@
             container.style.backgroundColor = slide.bg;
             textEl.style.color = slide.fg;
             textEl.innerHTML = slide.text; // DOMPurify etc. are applied during setting
+
+            const numbersEl = document.getElementById('slide-numbers');
+            if (numbersEl) {
+                if (showNumbers && slides.length > 0) {
+                    numbersEl.innerText = (currentSlideIndex + 1) + '/' + slides.length;
+                    numbersEl.style.display = 'block';
+                } else {
+                    numbersEl.style.display = 'none';
+                }
+            }
+
             fitText();
         }
 
@@ -153,13 +169,13 @@
             if (slideInterval) {
                 clearInterval(slideInterval);
             }
-            if (slides.length > 1) {
+            if (isPlaying && slides.length > 1) {
                 slideInterval = setInterval(() => {
                     currentSlideIndex = (currentSlideIndex + 1) % slides.length;
                     renderSlide();
-                }, 10000); // 10 seconds per slide
+                }, slideDuration);
             } else {
-                slideInterval = null; // No rotation needed for single slide
+                slideInterval = null; // No rotation needed for single slide or if paused
             }
         }
 
@@ -245,6 +261,74 @@
                     return; // Ignore regular viewers
                 }
 
+                // 1.1 Command Parsing: !bbplay, !bbstop, !bbpause
+                if (message.toLowerCase().startsWith('!bbplay')) {
+                    isPlaying = true;
+                    let durationStr = message.slice(7).trim().toLowerCase();
+                    if (durationStr) {
+                        let match = durationStr.match(/^(\d+)\s*(s|sec|seconds|m|min|minute|minutes)?$/);
+                        if (match) {
+                            let val = parseInt(match[1], 10);
+                            let unit = match[2];
+                            if (unit && unit.startsWith('m')) {
+                                slideDuration = val * 60000;
+                            } else {
+                                slideDuration = val * 1000;
+                            }
+                        }
+                    } else {
+                        slideDuration = 60000; // Default
+                    }
+                    resetRotation();
+                }
+
+                if (message.toLowerCase() === '!bbstop' || message.toLowerCase() === '!bbpause') {
+                    isPlaying = false;
+                    resetRotation();
+                }
+
+                // 1.2 Command Parsing: Navigation (!bbnext, !bbprev, !bbfirst, !bblast, !bbslide)
+                if (message.toLowerCase() === '!bbnext') {
+                    if (slides.length > 0) {
+                        currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+                        renderSlide();
+                        resetRotation();
+                    }
+                }
+
+                if (message.toLowerCase() === '!bbprev') {
+                    if (slides.length > 0) {
+                        currentSlideIndex = (currentSlideIndex - 1 + slides.length) % slides.length;
+                        renderSlide();
+                        resetRotation();
+                    }
+                }
+
+                if (message.toLowerCase() === '!bbfirst') {
+                    if (slides.length > 0) {
+                        currentSlideIndex = 0;
+                        renderSlide();
+                        resetRotation();
+                    }
+                }
+
+                if (message.toLowerCase() === '!bblast') {
+                    if (slides.length > 0) {
+                        currentSlideIndex = slides.length - 1;
+                        renderSlide();
+                        resetRotation();
+                    }
+                }
+
+                if (message.toLowerCase().startsWith('!bbslide ')) {
+                    let num = parseInt(message.slice(9).trim(), 10);
+                    if (!isNaN(num) && num >= 1 && num <= slides.length) {
+                        currentSlideIndex = num - 1;
+                        renderSlide();
+                        resetRotation();
+                    }
+                }
+
                 // 1.5 Command Parsing: !bb+ and !bb-
                 if (message.toLowerCase() === '!bb+') {
                     slides.push({ text: defaultText, bg: defaultBg, fg: defaultFg });
@@ -307,9 +391,15 @@
                     }
                 }
 
+                // 3.5 Command Parsing: !bbnum
+                if (message.toLowerCase() === '!bbnum') {
+                    showNumbers = !showNumbers;
+                    renderSlide();
+                }
+
                 // 4. Command Parsing: !billboard or !bbhelp
                 if (message.toLowerCase() === '!billboard' || message.toLowerCase() === '!bbhelp') {
-                    client.say(channel, 'Commands: !bb+, !bb-, !bbt <text>, !bbs <WxH>, !bbbg <color>, !bbfg <color>, !bboutline <color|none>');
+                    client.say(channel, 'Commands: !bb+, !bb-, !bbt <text>, !bbs <WxH>, !bbbg <color>, !bbfg <color>, !bboutline <color|none>, !bbplay [duration], !bbstop, !bbpause, !bbnext, !bbprev, !bbfirst, !bblast, !bbnum, !bbslide <num>');
                 }
 
                 // 5. Command Parsing: !bbbg

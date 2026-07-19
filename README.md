@@ -28,3 +28,11 @@ A lightweight, customizable browser-source billboard for OBS that allows streame
 - `!bbbg <color>` - Sets the background color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbbg #ff0000` or `!bbbg 000000`)
 - `!bbfg <color>` - Sets the text color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbfg #00ff00` or `!bbfg 00ff00`)
 - `!bboutline <color>` - Sets the outline color of the billboard. Supports hex values. Use `none` to remove the outline. (e.g., `!bboutline #ffffff` or `!bboutline none`)
+- `!bbplay [duration]` - Starts automatically running the slideshow. Defaults to switching every 60 seconds. You can provide an optional duration (e.g., `!bbplay 8`, `!bbplay 8s`, `!bbplay 1m`, `!bbplay 1 min`, `!bbplay 1 minute`).
+- `!bbstop` / `!bbpause` - Stops autoplay.
+- `!bbnext` - Switches to the next slide.
+- `!bbprev` - Switches to the previous slide.
+- `!bbfirst` - Switches to the first slide.
+- `!bblast` - Switches to the last slide.
+- `!bbslide <num>` - Switches to the specified slide number (e.g., `!bbslide 5`).
+- `!bbnum` - Turns on/off slide numbers to show the current slide number to the right of the billboard (e.g. 4/10).
