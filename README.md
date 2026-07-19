@@ -21,6 +21,8 @@ A lightweight, customizable browser-source billboard for OBS that allows streame
 *These commands can only be used by the Broadcaster and channel Moderators.*
 
 - `!billboard` (or `!bbhelp`) - Outputs all available commands to the Twitch chat.
+- `!bb+` - Adds a new slide to the billboard and switches to it. It defaults to 'Welcome to the pond!' with a brown background and white text.
+- `!bb-` - Deletes the current slide from the billboard. If it is the last slide, it resets the billboard.
 - `!bbt <text>` - Sets the main text for the billboard. (e.g., `!bbt Thanks for watching!`)
 - `!bbs <width>x<height>` - Resizes the billboard to the specified dimensions. (e.g., `!bbs 1200x300`)
 - `!bbbg <color>` - Sets the background color of the billboard. Supports hex values with or without the `#` prefix. (e.g., `!bbbg #ff0000` or `!bbbg 000000`)

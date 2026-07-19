@@ -128,6 +128,41 @@
 
         // --- PHASE 3: Twitch Chat Integration ---
 
+        // Billboard Slides State
+        let slides = [];
+        let currentSlideIndex = 0;
+        let slideInterval = null;
+
+        const defaultText = 'Welcome to the pond!';
+        const defaultBg = '#8b4513';
+        const defaultFg = '#ffffff';
+
+        function renderSlide() {
+            if (slides.length === 0) return;
+            const container = document.getElementById('billboard-container');
+            const textEl = document.getElementById('billboard-text');
+            const slide = slides[currentSlideIndex];
+
+            container.style.backgroundColor = slide.bg;
+            textEl.style.color = slide.fg;
+            textEl.innerHTML = slide.text; // DOMPurify etc. are applied during setting
+            fitText();
+        }
+
+        function resetRotation() {
+            if (slideInterval) {
+                clearInterval(slideInterval);
+            }
+            if (slides.length > 1) {
+                slideInterval = setInterval(() => {
+                    currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+                    renderSlide();
+                }, 10000); // 10 seconds per slide
+            } else {
+                slideInterval = null; // No rotation needed for single slide
+            }
+        }
+
         // Grab the channel name from the OBS Browser Source URL parameters
         // Example: https://your-site.github.io/index.html?channel=shroud
         const urlParams = new URLSearchParams(window.location.search);
@@ -166,6 +201,15 @@
             textEl.style.color = initialFg;
         }
 
+        slides = [{
+            text: initialText ? DOMPurify.sanitize(marked.parse(initialText.replace(/;/g, '  \n'))) : defaultText,
+            bg: initialBg || defaultBg,
+            fg: initialFg || defaultFg
+        }];
+        // Apply default colors to DOM if URL didn't specify them
+        if (!initialBg) container.style.backgroundColor = defaultBg;
+        if (!initialFg) textEl.style.color = defaultFg;
+
         if (!channelName) {
             document.getElementById('setup-warning').style.display = 'block';
             textEl.innerText = initialText ? initialText : 'SETUP REQUIRED';
@@ -182,8 +226,8 @@
 
             client.connect().then(() => {
                 console.log(`Connected to Twitch chat: #${channelName}`);
-                textEl.innerText = initialText ? initialText : 'BILLBOARD ACTIVE';
-                fitText();
+                renderSlide();
+                resetRotation();
             }).catch(console.error);
 
             // Listen for incoming messages
@@ -201,6 +245,30 @@
                     return; // Ignore regular viewers
                 }
 
+                // 1.5 Command Parsing: !bb+ and !bb-
+                if (message.toLowerCase() === '!bb+') {
+                    slides.push({ text: defaultText, bg: defaultBg, fg: defaultFg });
+                    currentSlideIndex = slides.length - 1;
+                    renderSlide();
+                    resetRotation();
+                }
+
+                if (message.toLowerCase() === '!bb-') {
+                    slides.splice(currentSlideIndex, 1);
+                    if (slides.length === 0) {
+                        slides = [{
+                            text: initialText ? DOMPurify.sanitize(marked.parse(initialText.replace(/;/g, '  \n'))) : defaultText,
+                            bg: initialBg || defaultBg,
+                            fg: initialFg || defaultFg
+                        }];
+                    }
+                    if (currentSlideIndex >= slides.length) {
+                        currentSlideIndex = slides.length - 1;
+                    }
+                    renderSlide();
+                    resetRotation();
+                }
+
                 // 2. Command Parsing: !bbt (formerly !billboardtext)
                 if (message.toLowerCase().startsWith('!bbt ')) {
                     let newText = message.slice(5).trim(); // Extract text after command
@@ -209,8 +277,9 @@
                         newText = newText.replace(/;/g, '  \n');
                         const parsedText = marked.parse(newText);
                         const cleanText = DOMPurify.sanitize(parsedText);
-                        document.getElementById('billboard-text').innerHTML = cleanText;
-                        fitText(); // Instantly resize text
+                        slides[currentSlideIndex].text = cleanText;
+                        renderSlide();
+                        resetRotation();
                     }
                 }
 
@@ -240,7 +309,7 @@
 
                 // 4. Command Parsing: !billboard or !bbhelp
                 if (message.toLowerCase() === '!billboard' || message.toLowerCase() === '!bbhelp') {
-                    client.say(channel, 'Commands: !bbt <text>, !bbs <WxH>, !bbbg <color>, !bbfg <color>, !bboutline <color|none>');
+                    client.say(channel, 'Commands: !bb+, !bb-, !bbt <text>, !bbs <WxH>, !bbbg <color>, !bbfg <color>, !bboutline <color|none>');
                 }
 
                 // 5. Command Parsing: !bbbg
@@ -251,7 +320,9 @@
                         if (!color.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(color)) {
                             color = '#' + color;
                         }
-                        document.getElementById('billboard-container').style.backgroundColor = color;
+                        slides[currentSlideIndex].bg = color;
+                        renderSlide();
+                        resetRotation();
                     }
                 }
 
@@ -263,7 +334,9 @@
                         if (!color.startsWith('#') && /^[0-9A-Fa-f]{3,6}$/.test(color)) {
                             color = '#' + color;
                         }
-                        document.getElementById('billboard-text').style.color = color;
+                        slides[currentSlideIndex].fg = color;
+                        renderSlide();
+                        resetRotation();
                     }
                 }
 
